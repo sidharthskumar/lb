@@ -1,0 +1,92 @@
+#LEXICAL ANALYZER FOR C
+#Jerome Francis Roll no. B16CSA31, R6 CSE
+#To execute type lex.py <source_file.c> 
+keywords=['include','auto','double'	,'int'	,'struct','break',	'else',	'long',	'switch','case','enum',	'register'	,'typedef','char',	'extern',	'return',	'union', 'const',	'float',	'short',	'unsigned','continue',	'for',	'signed'	,'void' ,'default',	'goto'	,'sizeof',	'volatile', 'do',	'if',	'static',	'while']
+operators=['+','-','*','/','.','&','^','%','?','!','<','>','=','|']
+delimeters=[';','(',')','{','}','[',']','.',',','#','@','$']
+
+import sys
+import re
+id=0        #id for each identifier
+adr=1000    #sample start address
+id_map={}   #id:identifier
+mapping_id={}   #identifier:id
+addr={}     #adress mapping
+if(len(sys.argv)<=1):
+	print("provide source file")
+	exit(0)
+source=open(sys.argv[1],'r')    
+tok=[]          #resultant list
+
+def add(st):        
+    #print(st)
+    global adr
+    global id
+
+    if(st in keywords):#keywords
+        tok.add('<keyword,'+st+'>')
+    elif st in operators:
+        if(len(tok)!=0 and "operator" in tok[len(tok)-1]):#eg:++
+            tok[len(tok)-1]=tok[len(tok)-1][:len(tok[len(tok)-1])-1]+st+'>'
+        else:
+            tok.add(('<operator,'+st+'>'))
+    elif st[0]=='"' and st[len(st)-1]=='"':#literals
+        tok.add('<literal,'+st+'>')
+    elif st in delimeters:
+        tok.add(('<'+st+'>'))
+    elif re.match('^[0-9\.]*$',st):
+        tok.add('<constant,'+st+'>')
+    else:#variables,identifier
+        if st not in mapping_id.keys():
+            id_map[id]=st
+            mapping_id[st]=id
+            addr[st]=adr
+            adr+=10
+            id+=1
+
+        tok.add('<id'+str(mapping_id[st])+','+str(addr[st])+'>')
+
+full=''
+
+for line in source:
+    full+=line.strip('\n')  #convert multi-line statement to single line
+#print('inline:',full)
+strf=0                      #flag for literal identification
+dd=''                       #maybe token
+for x in full:
+    if strf!=1:             #current character not in any literal
+        if x=='"':          #if starting of literal
+            strf=1
+            if(dd!="" and dd!=" "): #append current text value in dd
+                    add(dd)
+            dd=x                    #new dd text value
+            continue
+        if x in operators or x in delimeters or x==" ":#separators
+            if x=='.' and dd[0].isnumeric()==True:  #constant
+                dd+=x
+                continue
+            if(dd!=' ' and dd!=''):     #donot add space to tokens
+                add( dd )
+            dd = ''
+            if(x!=" "): #donot add space to tokens
+                add(x )
+
+        else:#identifier
+            dd+=x
+    else:#literal continues
+        dd+=x
+        if(x=='"'):
+            strf=0  #reset literal flag
+            append(dd)
+            dd=""
+
+print("tokens for :",sys.argv[1])
+print("------------------------------------------------------------------------------")
+for k in tok:
+    print(k+' ,')
+
+print("\nid and identifier")
+print("------------------------------------------------------------------------------")
+for x in id_map.keys():
+    print(str(x)+':'+id_map[x])
+
